@@ -6,7 +6,8 @@ import re
 import math
 import json
 import datetime
-
+import random
+import re
 
 # initial fresh date of current time via the format : YYYY-mm-DD HH-MM-SS to be used as reference
 todayDate = str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
@@ -45,30 +46,37 @@ def saveProducts(products):
         if not found:
                 - add the product to db with statu : new
     """
-    db = loadFile("products.json")
     
+    db = loadFile("data/products.json")
     # loop through products scrapped
     for product in products:
+        
         found = False
         # loop through products already stored in db and check if products exists via id+sourceCaregoryUrl
         # we check the 'sourceCaregoryUrl' also because there is some products listed in two different categories  
         # in other word : same products listed in two diefferent categories or more
+        
         for p in db:
-            if p['id'] == product['id'] and p['sourceCaregoryUrl'] == product['sourceCaregoryUrl']:
+            
+            if p['id'] == product['id']:
+                p['updated_at'] = todayDate
                 # print(p['id'] ,product['id'])
-                if p['price']['price'] != product['price']['price']:
-                    p['price']['price'] = product['price']['price']
-                    p['statu'] = "changed"
-                else:
+                if p['price']['price'] == product['price']['price']:
                     p['statu'] = "stable"
-                    
+                else:
+                    p['price']['price'] = product['price']['price']
+                    p['statu'] = "changed"    
                 p['price']['date'] = product['price']['date']
                 found = True
+          
                 break
+            
         if not found:
             product['statu'] = 'new'
+            product['updated_at'] = todayDate
             db.append(product)
-    updateFile("products.json", db)
+    updateFile("data/products.json", db)
+    
     
     
 def getTotalPages(e):
@@ -110,13 +118,14 @@ def getAllPaginationsUrls(url, totalPaginationUrls):
     #
     #
     #
-    data = loadFile("urls.json")
+    data = loadFile("data/urls.json")
  
     urlsSet = set(data)
     urlsSet.update(tuple(urls))
     allurls = list(urlsSet)
     allurls.sort()
-    updateFile("urls.json", allurls)
+    
+    updateFile("data/urls.json", allurls)
     #
     #
     #
@@ -131,7 +140,7 @@ def loadCategoriesUrlsToScrap():
     all the cateogories urls (not paginations !!!) in this file will be fetched and 
     scrapped from page 1 to page final
     """
-    return loadFile("categories.json")
+    return loadFile("data/categories.json")
 
 def extractProductData(prod, categoryUrl, index):
     """
@@ -151,14 +160,14 @@ def extractProductData(prod, categoryUrl, index):
         'id' : '', #done
         'name' : '', #done
         'image' : '',  #done
-        'url' : '',
+        'url' : '', #done
         'price' :   #done
             {
                 'date': '',  #done
                 'price': 0  #done
             },
         'index': index,  #done
-        'statu': 'new|deleted|changed|stable', 
+        'statu': 'new|deleted|changed|stable', #done
         'sourceCaregoryUrl': categoryUrl  #done
     }
     
@@ -175,15 +184,19 @@ def extractProductData(prod, categoryUrl, index):
     
     # get the image url and remove the params from url to get best quality image
     img = prod.xpath("//img[contains(@class, 'product-first-img')]")[0]
-    data['image'] = (img.get("data-src") or img.get("src")).split("?")[0]
+    data['image'] = (img.get("data-src") or img.get("src")) #.split("?")[0]
 
     # set the time of this scrapping which is declared globally every time the script executed
     data['price']['date'] = todayDate 
     
     # extract price from html as text and trim spaces
     price = prod.xpath("//div[@class='product-pricing']//span")[0].text.strip()
-    data['price']['price'] =  price
-
+    data['price']['price'] = price.strip()
+    if price:
+        r = re.compile(r'(\d[\d.,]*)\b')
+        data['price']['price'] = [x.replace('.', '') for x in re.findall(r, price)][0].strip()
+    
+    
     return data
 
 def checkMissingProducts():
@@ -192,13 +205,44 @@ def checkMissingProducts():
     if there is difference (we compare YYYY-MM-DD) we consider the produdct as missing 
     then switch its statu
     """
-    db = loadFile("products.json")
+    db = loadFile("data/products.json")
     
     for p in db:
-        if p['price']['date'].split(" ")[0] < todayDate.split(" ")[0]:
+        pFormatedDate = p['price']['date'].split(" ")[0]
+        todayFormatedDate = todayDate.split(" ")[0]
+        if pFormatedDate != todayFormatedDate:
             p['statu'] = 'deleted'
-    updateFile("products.json", db)
+    updateFile("data/products.json", db)
     
+def updateAllStatusToDeleted():
+    
+    """
+    update all status to deleted before scraping so if the products still exists the statu will change
+    otherwise will remain deleted
+    """
+    db = loadFile("data/products.json")
+    
+    for p in db:
+ 
+        p['statu'] = 'deleted'
+    updateFile("data/products.json", db)
+    
+def printStatsOfDB():
+
+    db = loadFile("data/products.json")
+    
+    deleted = [l for l in db if l['statu'] == 'deleted']
+    newProds = [l for l in db if l['statu'] == 'new']
+    changed = [l for l in db if l['statu'] == 'changed']
+    stable = [l for l in db if l['statu'] == 'stable']
+    print(f"""
+    Stats of this scrapping :
+    New : {len(newProds)}
+    Deleted : {len(deleted)}
+    Changed : {len(changed)}
+    Stable  : {len(stable)}
+    
+          """)
     
 def myGet(url):
     """
@@ -237,7 +281,7 @@ def scrappe():
     while not sucess:
         s=time.time()
         try:
-            print("try")
+ 
             # load categories to be scrapped
             categoriesUrls = loadCategoriesUrlsToScrap()
 
@@ -277,7 +321,7 @@ def scrappe():
                     saveProducts(productsCleaned)  
                 
                     # print(f"Total Products in  page {i + 1} is: {len(productsCleaned)}")
-                    time.sleep(1)
+                    time.sleep(random.choice([1]))
             
             sucess = True
         except requests.exceptions.Timeout as err: 
@@ -291,19 +335,17 @@ def scrappe():
     # Example call
     
 
-         
+updateAllStatusToDeleted()        
 print("Start scraping ...")   
 scrappe()
 
+# print("Check deleted products if any ...")
+# checkMissingProducts()
+# print("#DONE")
 
-print("Check deleted products if any ...")
-checkMissingProducts()
-print("#DONE")
+print(f"total of products scrapped : {len(loadFile('data/products.json'))})")
 
-
-print(f"total of products scrapped : {len(loadFile('products.json'))})")
-
-
+printStatsOfDB()
 
 """
 all function created are : 
@@ -319,5 +361,6 @@ all function created are :
     def checkMissingProducts()
     def myGet(url)
     def scrappe()
+    def updateAllStatusToDeleted()
 ===>
 """
