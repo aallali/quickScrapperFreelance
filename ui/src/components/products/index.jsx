@@ -3,14 +3,15 @@ import "./Products.css";
 import { Button, Card, Row, Col } from "react-bootstrap";
 import db from "./products.json";
 export default function Products() {
-  const [filter, setFilter] = useState("deleted");
+  const [filter, setFilter] = useState("new");
   const [originalData] = useState([...db])
   const [data, updateData] = useState(originalData.filter((l) => l.statu === filter));
 
   useEffect(() => {
     updateData(originalData.filter((l) => l.statu === filter));
-    console.log(data.length, originalData.length, filter)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
+
   return (
     <div className="inner-products">
       <Row>
@@ -29,7 +30,7 @@ export default function Products() {
         </Col>
       </Row>
       <Row>
-        {data.slice(0, 100).map((l) => (
+        {data.map((l) => (
           <Card style={{ width: "15rem" }} key={l.id}>
             <Card.Img variant="top" src={l.image} />
             <Card.Body>
