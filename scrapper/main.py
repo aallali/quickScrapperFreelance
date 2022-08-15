@@ -191,7 +191,7 @@ def extractProductData(prod, categoryUrl, index):
     
     # get the image url and remove the params from url to get best quality image
     img = prod.xpath("//img[contains(@class, 'product-first-img')]")[0]
-    data['image'] = (img.get("data-src") or img.get("src")) #.split("?")[0]
+    data['image'] = (img.get("data-src") or img.get("src")).split("?")[0]
 
     # set the time of this scrapping which is declared globally every time the script executed
     data['price']['date'] = todayDate 
