@@ -59,6 +59,11 @@ def saveProducts(products):
         for p in db:
             
             if p['id'] == product['id']:
+                p['url'] = product['url']
+                p['image'] = product['image']
+                p['index'] = product['index']
+                p['name'] = product['name']
+                p['brand'] = product['brand']
                 p['updated_at'] = todayDate
                 # print(p['id'] ,product['id'])
                 if p['price']['price'] == product['price']['price']:
@@ -159,6 +164,7 @@ def extractProductData(prod, categoryUrl, index):
     data = {
         'id' : '', #done
         'name' : '', #done
+        'brand': '', #done
         'image' : '',  #done
         'url' : '', #done
         'price' :   #done
@@ -179,8 +185,9 @@ def extractProductData(prod, categoryUrl, index):
 
     # extract the namee/url from 'a' tag 
     href = prod.xpath("//a[@data-name and @title]")[0]
-    data['name'] = href.get('title')
+    data['name'] = href.get("title")
     data['url'] = href.get('href')
+    data['brand'] = prod.xpath('//span[@class="product-brand"]')[0].text.strip()
     
     # get the image url and remove the params from url to get best quality image
     img = prod.xpath("//img[contains(@class, 'product-first-img')]")[0]
@@ -321,8 +328,9 @@ def scrappe():
                     saveProducts(productsCleaned)  
                 
                     # print(f"Total Products in  page {i + 1} is: {len(productsCleaned)}")
-                    time.sleep(random.choice([1]))
-            
+                    time.sleep(random.choice([1,2,1,3,1,4]))
+                 
+              
             sucess = True
         except requests.exceptions.Timeout as err: 
             print(err) 
@@ -335,17 +343,16 @@ def scrappe():
     # Example call
     
 
+
 updateAllStatusToDeleted()        
 print("Start scraping ...")   
 scrappe()
 
-# print("Check deleted products if any ...")
-# checkMissingProducts()
-# print("#DONE")
 
 print(f"total of products scrapped : {len(loadFile('data/products.json'))})")
 
 printStatsOfDB()
+
 
 """
 all function created are : 
