@@ -58,12 +58,12 @@ def saveProducts(products):
     
  
     for product in products:
+        baseUrl = "https://www.sephora.fr"
         doc = db.findProductWithID(product['id'])
-        product['website'] = "https://www.sephora.fr"
-        
-        product['categoryUrl'] = product['sourceCaregoryUrl'].split("?")[0].replace("https://www.sephora.fr", "")
-        product['listUrl'] = product['sourceCaregoryUrl'].replace("https://www.sephora.fr", "")
-        product['url'] = product['url'].replace("https://www.sephora.fr", "")
+        product['website'] = baseUrl
+        product['categoryUrl'] = product['sourceCaregoryUrl'].split("?")[0].replace(baseUrl, "")
+        product['listUrl'] = product['sourceCaregoryUrl'].replace(baseUrl, "")
+        product['url'] = product['url'].replace(baseUrl, "")
         if not doc:
             product['statu'] = "new"
             db.addProduct(product)
@@ -257,6 +257,7 @@ def myGet(url):
     return tree
 
 def scrapMainCategories():
+    db.updateAllToDeleted()
     updateFile("data/urls.json", [])
     categoriesUrls_ = loadCategoriesUrlsToScrap()
 
@@ -297,7 +298,7 @@ def scrapPagination(urls):
         while tries > 0 and not sucess:
                 # fetch the page and return html
             try:
-                tree =  myGet(page)
+                tree =  myGet(page) 
                 sucess = True
             except requests.exceptions.Timeout as err: 
                 if tries == 5:
@@ -365,7 +366,7 @@ def paginationsContinue():
 
 def scrapDeleted():
     delLists = db.getListsWithDeletedProducts()
-    delLists = [l for l in delLists if "?page=" not in l]
+     
     updateUrlsStatus(False)
     scrapPagination(delLists)
     return 
