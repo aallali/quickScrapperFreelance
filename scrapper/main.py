@@ -1,3 +1,5 @@
+#!/usr/bin/python
+from tracemalloc import start
 from lxml import etree
 from io import StringIO
 import requests
@@ -8,13 +10,20 @@ import json
 import datetime
 import random
 import re
-
+import sys
+from db.db import DB
 # initial fresh date of current time via the format : YYYY-mm-DD HH-MM-SS to be used as reference
 todayDate = str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-
+perPageSize = 100
 # Set explicit HTMLParser
 parser = etree.HTMLParser()
-
+session = requests.Session()
+db = DB('./db/data.db')
+lastCookies = {}
+db.connect()
+db.createTables()
+ 
+# 
 
 def loadFile(file):
     """
@@ -34,7 +43,7 @@ def updateFile(file, data):
     with open(file, "w") as outfile: 
         json.dump(data, outfile)
     return False
-
+    
 def saveProducts(products):
     """
     save the products into the file after making some checks and changes
@@ -47,43 +56,27 @@ def saveProducts(products):
                 - add the product to db with statu : new
     """
     
-    db = loadFile("data/products.json")
-    # loop through products scrapped
+ 
     for product in products:
+        doc = db.findProductWithID(product['id'])
+        product['website'] = "https://www.sephora.fr"
         
-        found = False
-        # loop through products already stored in db and check if products exists via id+sourceCaregoryUrl
-        # we check the 'sourceCaregoryUrl' also because there is some products listed in two different categories  
-        # in other word : same products listed in two diefferent categories or more
+        product['categoryUrl'] = product['sourceCaregoryUrl'].split("?")[0].replace("https://www.sephora.fr", "")
+        product['listUrl'] = product['sourceCaregoryUrl'].replace("https://www.sephora.fr", "")
+        product['url'] = product['url'].replace("https://www.sephora.fr", "")
+        if not doc:
+            product['statu'] = "new"
+            db.addProduct(product)
+            
+        else:
         
-        for p in db:
-            
-            if p['id'] == product['id']:
-                p['url'] = product['url']
-                p['image'] = product['image']
-                p['index'] = product['index']
-                p['name'] = product['name']
-                p['brand'] = product['brand']
-                p['updated_at'] = todayDate
-                # print(p['id'] ,product['id'])
-                if p['price']['price'] == product['price']['price']:
-                    p['statu'] = "stable"
-                else:
-                    p['price']['price'] = product['price']['price']
-                    p['statu'] = "changed"    
-                p['price']['date'] = product['price']['date']
-                found = True
-          
-                break
-            
-        if not found:
-            product['statu'] = 'new'
-            product['updated_at'] = todayDate
-            db.append(product)
-    updateFile("data/products.json", db)
-    
-    
-    
+            if doc[4] != product['price']:
+                product['statu'] = 'changed'
+                
+            else:
+                product['statu'] = 'stable'
+            db.updateProduct(product)
+ 
 def getTotalPages(e):
     """
     e : the html dom to search in with xpath
@@ -96,7 +89,7 @@ def getTotalPages(e):
     totalProductsTxt = e.xpath("//div[@class='results-hits']")[0].text
     totalProductsRgx = re.findall(r'\d+', totalProductsTxt)
     totalProductsNumber = list(map(int, totalProductsRgx))[0]
-    return math.ceil(totalProductsNumber/28) #math ceil to take the upper number when there is  decimal eg: 5.64 => 6
+    return math.ceil(totalProductsNumber/perPageSize) #math ceil to take the upper number when there is  decimal eg: 5.64 => 6
 
 def getAllProducts(e):
     """
@@ -104,7 +97,7 @@ def getAllProducts(e):
     return list of products  as html dom
     """
     ul = e.xpath("//ul[@id='search-result-items']")
-    li = ul[0].xpath("//li[contains(@class, 'grid-tile')]//div[contains(@class, 'product-tile') and @data-itemid and @data-tcproduct]")
+    li = e.xpath("//li[contains(@class, 'grid-tile')]//div[contains(@class, 'product-tile') and @data-itemid and @data-tcproduct]")
     return li
 
 def getAllPaginationsUrls(url, totalPaginationUrls):
@@ -114,8 +107,12 @@ def getAllPaginationsUrls(url, totalPaginationUrls):
     return array of strings
     """
     urls = []
+    
     for i in range(totalPaginationUrls):
-        urls.append(f"{url}?page={i+1}")
+     
+        # startIndex = i * perPageSize
+       
+        urls.append(f"{url}?page={i+1}&sz={perPageSize}&format=page-element")
     
     # load all urls to be scrapped from urls.json 
     # try to merge the data stored with new one to avoid duplication
@@ -124,11 +121,11 @@ def getAllPaginationsUrls(url, totalPaginationUrls):
     #
     #
     data = loadFile("data/urls.json")
- 
+    data = [l['url'] for l in data]
     urlsSet = set(data)
     urlsSet.update(tuple(urls))
     allurls = list(urlsSet)
-    allurls.sort()
+    allurls = [{'url': l, 'success': False} for l in allurls]
     
     updateFile("data/urls.json", allurls)
     #
@@ -137,8 +134,23 @@ def getAllPaginationsUrls(url, totalPaginationUrls):
     #
     # the steps above are not necessary usefull for the moments since we just store data but dont use it for scraping
     # but i stored them in file so in case we needed that in future, ill have the base structure ready
-    return urls
+    return allurls
 
+def setUrlSuccess(url):
+    data = loadFile("data/urls.json")
+    for l in data:
+        if url == l['url']:
+            l['success'] = True
+            
+    updateFile("data/urls.json", data)
+    
+def updateUrlsStatus(stat):
+    data = loadFile("data/urls.json")
+    for l in data:
+        l['success'] = stat
+            
+    updateFile("data/urls.json", data)
+    
 def loadCategoriesUrlsToScrap():
     
     """
@@ -167,12 +179,8 @@ def extractProductData(prod, categoryUrl, index):
         'brand': '', #done
         'image' : '',  #done
         'url' : '', #done
-        'price' :   #done
-            {
-                'date': '',  #done
-                'price': 0  #done
-            },
-        'index': index,  #done
+        'price' : 0,  #done
+        'lindex': index,  #done
         'statu': 'new|deleted|changed|stable', #done
         'sourceCaregoryUrl': categoryUrl  #done
     }
@@ -194,54 +202,27 @@ def extractProductData(prod, categoryUrl, index):
     data['image'] = (img.get("data-src") or img.get("src")).split("?")[0]
 
     # set the time of this scrapping which is declared globally every time the script executed
-    data['price']['date'] = todayDate 
+ 
     
     # extract price from html as text and trim spaces
     price = prod.xpath("//div[@class='product-pricing']//span")[0].text.strip()
-    data['price']['price'] = price.strip()
+    data['price'] = price.strip()
     if price:
         r = re.compile(r'(\d[\d.,]*)\b')
-        data['price']['price'] = [x.replace('.', '') for x in re.findall(r, price)][0].strip()
+        data['price'] = [x.replace('.', '') for x in re.findall(r, price)][0].strip()
+        data['price'] = float(data['price'].replace(",", "."))
     
     
     return data
 
-def checkMissingProducts():
-    """
-    load all products saved in local file and compare each date of price of them with today date 
-    if there is difference (we compare YYYY-MM-DD) we consider the produdct as missing 
-    then switch its statu
-    """
-    db = loadFile("data/products.json")
-    
-    for p in db:
-        pFormatedDate = p['price']['date'].split(" ")[0]
-        todayFormatedDate = todayDate.split(" ")[0]
-        if pFormatedDate != todayFormatedDate:
-            p['statu'] = 'deleted'
-    updateFile("data/products.json", db)
-    
-def updateAllStatusToDeleted():
-    
-    """
-    update all status to deleted before scraping so if the products still exists the statu will change
-    otherwise will remain deleted
-    """
-    db = loadFile("data/products.json")
-    
-    for p in db:
- 
-        p['statu'] = 'deleted'
-    updateFile("data/products.json", db)
-    
 def printStatsOfDB():
 
-    db = loadFile("data/products.json")
+    _db = loadFile("data/products.json")
     
-    deleted = [l for l in db if l['statu'] == 'deleted']
-    newProds = [l for l in db if l['statu'] == 'new']
-    changed = [l for l in db if l['statu'] == 'changed']
-    stable = [l for l in db if l['statu'] == 'stable']
+    deleted = [l for l in _db if l['statu'] == 'deleted']
+    newProds = [l for l in _db if l['statu'] == 'new']
+    changed = [l for l in _db if l['statu'] == 'changed']
+    stable = [l for l in _db if l['statu'] == 'stable']
     print(f"""
     Stats of this scrapping :
     New : {len(newProds)}
@@ -252,107 +233,171 @@ def printStatsOfDB():
           """)
     
 def myGet(url):
+    # global lastCookies
     """
     costum function that initiat a GET request with costum USER-AGENT header (without it the website block the requests)
     then load the response into etree html parser
     return tree of html dom
     TODO: make the user agent random from list of user agents will be gived hardcoded
     """
-    r = requests.get(url ,headers={
-            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0'
-            }, timeout=10)
+    uas = ['Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0', 
+           'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.41 Safari/537.36',
+            ]
+    r = session.get(url ,headers={
+            'User-Agent':random.choice(uas),
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Referer': url.split("?")[0]
+            },timeout=10)
+   
+    # lastCookies = session.cookies
     html = r.content.decode("utf-8")
     tree = etree.parse(StringIO(html), parser=parser)
     return tree
 
-def scrappe():
-    """
-    the scrappe function which is the main function here 
-    all code wrapped inside while not sucess so it keeps retrying when there is error
-    TODO : re-work this part to handle the error correctly
-    1 - get categories urls from 'categories.json' 
-            via loadCategoriesUrlsToScrap() function
-            
-    2 - fetch each one of them and collect the paginations urls 
-            via getTotalPages() + getAllPaginationsUrls()
-            
-    3 - fetch each one of the pagination urls and collect all products data listed there 
-            via myGet() + getAllProducts() + extractProductData
-            
-    4 - store the products into the database
-            via saveProducts()
+def scrapMainCategories():
+    updateFile("data/urls.json", [])
+    categoriesUrls_ = loadCategoriesUrlsToScrap()
+
+    # loop through the categories urls
+    for cat in categoriesUrls_:
+        print(cat)
         
-    * there is a waiting time of 1 second between each request
-    """
-    sucess = False
-    while not sucess:
-        s=time.time()
-        try:
- 
-            # load categories to be scrapped
-            categoriesUrls = loadCategoriesUrlsToScrap()
-
-            # loop through the categories urls
-            for cat in categoriesUrls:
-                print(cat)
-                # fetch the category and get the html
-                tree = myGet(cat)
-                
-                print(f"Total Pages : {getTotalPages(tree)}")
-                
-                # generate list of all paginations urls
-                paginations = getAllPaginationsUrls(cat,getTotalPages(tree))
-            
-                # loop through the paginations
-                for (i,page) in enumerate(paginations):
-                    
-                    # fetch the page and return html
-                    tree =  myGet(page)
-                    
-                    # extract list of the products's html
-                    products = getAllProducts(tree)
-                    
-                    # intiat variable where to store the final products data after extraction and cleaning
-                    productsCleaned = []
-                    
-                    # loop through the products list (html formal)
-                    for (x,prod) in enumerate(products):
-                        
-                        # extract the cleaned product data from each product dom via extractProductData
-                        pddt = extractProductData(prod, page, x)
-                        
-                        # push the product to the list of products
-                        productsCleaned.append(pddt)
-                    
-                    # save the products to local file 'products.json'
-                    saveProducts(productsCleaned)  
-                
-                    # print(f"Total Products in  page {i + 1} is: {len(productsCleaned)}")
-                    time.sleep(random.choice([1,2,1,3,1,4]))
-                 
-              
-            sucess = True
-        except requests.exceptions.Timeout as err: 
-            print(err) 
-            # sleep some sec/min and retry here!
-
+        # fetch the category and get the html
+        tree = myGet(cat)
         
-        print ('Time taken to execute the code - ' + str((time.time()-s)/60) + ' Minuten')
-
-        time.sleep(2)
-    # Example call
+        print(f"Total Pages : {getTotalPages(tree)}")
+        
+        # generate list of all paginations urls
+        getAllPaginationsUrls(cat, getTotalPages(tree))
+        
+def scrapPagination(urls):
+    global session
     
+    paginations = []
+    if urls:
+        paginations = [f"https://www.sephora.fr{l}" for l in  urls]
+    else:
+        paginations = loadFile("./data/urls.json")
+        paginations = [l['url'] for l in paginations if not l['success']]
+        
+ 
+    print(f"Total paginations : {len(paginations)}")
+    
+    s = time.time()
+
+    # loop through the paginations
+    for (i,page) in enumerate(paginations):
+        if i % 10 == 0:
+            session = requests.Session()
+        
+        sucess = False
+        tries = 5
+        while tries > 0 and not sucess:
+                # fetch the page and return html
+            try:
+                tree =  myGet(page)
+                sucess = True
+            except requests.exceptions.Timeout as err: 
+                if tries == 5:
+                    print(f"Error : {page}")
+                # print(err)
+                time.sleep(5 + (5-tries) * 2)
+                tries -= 1
+        if tries <= 0:
+            print(f"BYPASSED : {page}")
+            continue
+       
+       
+        # extract list of the products's html
+        products = getAllProducts(tree)
+        
+        # intiat variable where to store the final products data after extraction and cleaning
+        productsCleaned = []
+        
+        # loop through the products list (html formal)
+        for (x,prod) in enumerate(products):
+            
+            # extract the cleaned product data from each product dom via extractProductData
+            pddt = extractProductData(prod, page, x)
+            
+            # push the product to the list of products
+            productsCleaned.append(pddt)
+            
+        # save the products to local file 'products.json'
+
+        
+        saveProducts(productsCleaned)  
+        
+        # print(f"Total Products in  page {i + 1} is: {len(productsCleaned)}")
+        randomWaitingTime = random.choice([1,2,3,4,5])
+        # print(f"waitng time at {i} is : {randomWaitingTime}")
+        if not urls:
+            setUrlSuccess(page)
+        minutesSpent = int((time.time()-s)/60)
+        print(f"urls scrapped : {i+1}/{len(paginations)}  | [{minutesSpent} minuten]\r")
+        if minutesSpent >= 13:
+            sys.exit(1)
+        time.sleep(randomWaitingTime)
+ 
+"""
+mainCats
+paginationsContinue
+paginationsFresh
+scrapDeleted
+data
+"""
+
+def mainCats():
+    scrapMainCategories()
+    return 
+
+def paginationsFresh():
+    updateUrlsStatus(False)
+    scrapPagination(None)
+    return 
+
+def paginationsContinue():
+    scrapPagination(None)
+    return
 
 
-updateAllStatusToDeleted()        
-print("Start scraping ...")   
-scrappe()
+def scrapDeleted():
+    delLists = db.getListsWithDeletedProducts()
+    delLists = [l for l in delLists if "?page=" not in l]
+    updateUrlsStatus(False)
+    scrapPagination(delLists)
+    return 
 
+def getData():
+    data = db.getAllProducts()
+    for l in data:
+        del l['website']
+        del l['index']
+    updateFile("./data/products.json", data)
+    printStatsOfDB()
+    print("data extraction")
+    return 
 
-print(f"total of products scrapped : {len(loadFile('data/products.json'))})")
+if __name__ == "__main__":
 
-printStatsOfDB()
-
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "mainCats":
+            scrapMainCategories()
+        elif sys.argv[1] == "paginationsContinue":
+            scrapPagination(None)
+        elif sys.argv[1] == "paginationsFresh":
+            updateUrlsStatus(False)
+            scrapPagination(None)
+        elif sys.argv[1] == "scrapDeleted":
+            scrapDeleted()
+        elif sys.argv[1] == "data":
+            getData()
+            
+    db.disconnect()
+    
+ 
 
 """
 all function created are : 
@@ -363,11 +408,14 @@ all function created are :
     def getTotalPages(e)
     def getAllProducts(e)
     def getAllPaginationsUrls(url, totalPaginationUrls)
+    def setUrlSuccess(url)
+    def updateUrlsStatus(stat)
     def loadCategoriesUrlsToScrap()
     def extractProductData(prod, categoryUrl, index)
-    def checkMissingProducts()
+    def printStatsOfDB()
     def myGet(url)
-    def scrappe()
-    def updateAllStatusToDeleted()
+    def scrapMainCategories()
+    def scrapPagination(urls)
 ===>
 """
+
