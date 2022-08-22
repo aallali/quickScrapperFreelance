@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Login.css"
 const { log } = console;
-export default function Login() {
+export default function Login({callOnLogin}) {
   const navigate = useNavigate();
 
   const [loginParams, setLoginParams] = useState({
@@ -21,12 +21,13 @@ export default function Login() {
   function verifyLogin() {
     const { username, password } = loginParams;
     log(username, password);
-    if (username === "admin" && password === "scrampy") {
+    if (username === "admin" && password === "admin") {
       log("local storage et");
       localStorage.setItem(
         "token",
         "IAMj4Dv35Jn=?c=2i?W2vI1G5ts/IEknD1djcWNHyoPIgu7PSvrYs/1gwo.1337"
       );
+      callOnLogin(true)
       navigate("/");
     } else alert("wrong password");
   }
@@ -46,7 +47,7 @@ export default function Login() {
       <h3>Log in</h3>
 
       <div className="form-group">
-        <label>Email</label>
+        <label>Username</label>
         <input
           type="username"
           name="username"
