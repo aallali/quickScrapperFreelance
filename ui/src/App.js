@@ -1,19 +1,16 @@
 import React, { useEffect, useState } from "react";
 
-import Login from "./components/login";
-import "../node_modules/bootstrap/dist/css/bootstrap.min.css";
+
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
+import {Button, Form, Nav, Navbar} from "react-bootstrap";
 
-import Button from "react-bootstrap/Button";
-
-import Form from "react-bootstrap/Form";
-import Nav from "react-bootstrap/Nav";
-import Navbar from "react-bootstrap/Navbar";
-
-import ProtectedRoute from "./components/protectedRoute";
+import Login from "./components/login";
 import Products from "./components/products";
-
+import ProtectedRoute from "./components/protectedRoute";
 import { isAuthenticated } from "./components/protectedRoute";
+
+import "../node_modules/bootstrap/dist/css/bootstrap.min.css";
+
 export default function App() {
   const [loggedIn, setLoggedIn] = useState(isAuthenticated());
   function goLogout() {
@@ -23,6 +20,7 @@ export default function App() {
   useEffect(() => {
     setLoggedIn(isAuthenticated)
   }, [loggedIn])
+  
   return (
     <Router>
       <div className="App">

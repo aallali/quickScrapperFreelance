@@ -1,58 +1,37 @@
-import React, { useEffect, useState } from "react";
-import "./Products.css";
-import { Row, Col, Table, Image } from "react-bootstrap";
+import React, { useState } from "react";
+
+import { Pagination, Button, Row, Col, Table, Image } from "react-bootstrap";
+import { usePagination, useImages, useFilters } from "./logic";
 import useFetch from "../../utils/useFetch";
 
+import "./Products.css";
+import config from "../../common/config.json";
+
 export default function Products() {
-  const [statuFilter, setStatuFilter] = useState("new");
-  const [brandFilter, setBrandFilter] = useState("");
-  const [categoryFilter, setCatFilter] = useState("");
-  const { data: db } = useFetch(
-    "https://automate-web-test-scraplng.s3.amazonaws.com/products.json"
-  );
-  const { data: categories } = useFetch(
-    "https://automate-web-test-scraping.s3.us-east-1.amazonaws.com/categories.json"
-  );
+  const { data: db } = useFetch(config.productsUrl);
+  const { data: categories } = useFetch(config.categoriesUrls);
   const [data, updateData] = useState([]);
-  const [brands, setBrands] = useState([]);
-
-  useEffect(() => {
-    updateData(
-      db.filter(
-        (l) =>
-          l.statu === statuFilter &&
-          l.listUrl.includes(categoryFilter) &&
-          (l.brand || "").includes(brandFilter)
-      )
-    );
-
-    let brandSet = new Set();
-    for (let i = 0; i < db.length; i++) {
-      const el = db[i];
-      if (el.brand) {
-        brandSet.add(el.brand);
-      }
-    }
-
-    setBrands(Array.from(brandSet));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db, statuFilter, brandFilter, categoryFilter]);
-
-  function liveSearch(value, column) {
-    if (value.length >= 3 || value.length === 0)
-      updateData(
-        db.filter(
-          (l) =>
-            l.statu === statuFilter &&
-            l.listUrl.includes(categoryFilter) &&
-            (l.brand || "").includes(brandFilter) &&
-            l[column].toLowerCase().includes(value.toLowerCase())
-        )
-      );
-  }
-  // function onClickImage(e) {
-  //   e.target.height = e.target.height === 500 ? 50 : 500;
-  // }
+  const [loadImages, setImageToLoad, onClickImage] = useImages();
+  const [paginations, updatePage, setPagination] = usePagination(
+    setImageToLoad,
+    data,
+    config.elementPerPage
+  );
+  const [
+    brands,
+    liveSearch,
+    runFilter,
+    statuFilter,
+    setStatuFilter,
+    setBrandFilter,
+    categoryFilter,
+    setCatFilter,
+  ] = useFilters(
+    config.minLengthToTriggerFilter,
+    config.defaultStatuFilter,
+    updateData,
+    db
+  );
 
   return (
     <div className="inner-products">
@@ -128,115 +107,160 @@ export default function Products() {
           </Row>
           <Row>
             <Col>
-              <h4>
+              <h5>
                 {" "}
-                total products with that filter {data.length} (note: only 1000
-                elements listed in table)
-              </h4>
+                total products with that filter {data.length} (note:{" "}
+                {paginations.perpage} elements listed per page)
+              </h5>
             </Col>
           </Row>
           <Row>
+            <Pagination
+              size="md"
+              style={{ display: "flex", justifyContent: "center" }}
+            >
+              <Pagination.Item
+                key={"previous"}
+                active={false}
+                onClick={() =>
+                  setPagination((prev) => ({
+                    ...prev,
+                    page: prev.page - 1 > 0 ? prev.page - 1 : 0,
+                  }))
+                }
+              >
+                Previous
+              </Pagination.Item>
+              <Pagination.Item key={"page"} active={true}>
+                <input
+                  type="text"
+                  style={{ width: "40px", height: "20px", padding: "0px" }}
+                  value={paginations.page + 1}
+                  onChange={updatePage}
+                />
+                /{paginations.total}
+              </Pagination.Item>
+              <Pagination.Item
+                key={"next"}
+                active={false}
+                onClick={() =>
+                  setPagination((prev) => ({
+                    ...prev,
+                    page:
+                      prev.page + 1 < prev.total ? prev.page + 1 : prev.page,
+                  }))
+                }
+              >
+                Next
+              </Pagination.Item>
+            </Pagination>
+
             <Table striped bordered hover>
               <thead>
                 <tr>
+                  <th>
+                    <Button onClick={runFilter}>Filter</Button>
+                  </th>
+                  <th>
+                    <input
+                      type="text"
+                      placeholder={"filter here..."}
+                      onChange={liveSearch("id")}
+                    />
+                  </th>
+                  <th>
+                    <Button onClick={() => setImageToLoad((prev) => !prev)}>
+                      {loadImages ? "hide" : "show"}
+                    </Button>
+                  </th>
+                  <th>
+                    <input
+                      type="text"
+                      placeholder="filter here..."
+                      onChange={liveSearch("name")}
+                    />
+                  </th>
+                  <th>
+                    <input
+                      type="text"
+                      placeholder="filter here..."
+                      onChange={liveSearch("brand")}
+                    />
+                  </th>
                   <th></th>
                   <th>
                     <input
                       type="text"
                       placeholder="filter here..."
-                      onChange={(e) => liveSearch(e.target.value, "id")}
+                      onChange={liveSearch("updated_at")}
                     />
                   </th>
-                  {/* <th>image</th> */}
-                  <th>
-                    <input
-                      type="text"
-                      placeholder="filter here..."
-                      onChange={(e) => liveSearch(e.target.value, "name")}
-                    />
-                  </th>
-                  <th>
-                    <input
-                      type="text"
-                      placeholder="filter here..."
-                      onChange={(e) => liveSearch(e.target.value, "brand")}
-                    />
-                  </th>
-                  <th></th>
-                  <th>
-                    <input
-                      type="text"
-                      placeholder="filter here..."
-                      onChange={(e) => liveSearch(e.target.value, "updated_at")}
-                    />
-                  </th>
-                  <th>
+                  {/* <th>
                     <input
                       type="text"
                       placeholder="filter here..."
                       onChange={(e) => liveSearch(e.target.value, "created_at")}
                     />
-                  </th>
+                  </th> */}
                   <th></th>
                 </tr>
                 <tr>
                   <th>#</th>
                   <th>id</th>
-                  {/* <th>image</th> */}
+                  <th>image</th>
                   <th>name</th>
                   <th>brand</th>
                   <th>price</th>
                   <th>updated_at</th>
-                  <th>created_at</th>
+                  {/* <th>created_at</th> */}
                   <th>Source List</th>
                 </tr>
               </thead>
               <tbody>
-                {data.slice(0, 500).map((l, i) => (
-                  <tr key={`product-${l.id}`}>
-                    <td>{i + 1}</td>
-                    <td>
-                      <input
-                        className="p-0"
-                        type="text"
-                        value={l.id}
-                        onChange={() => null}
-                      />
-                    </td>
-                    {/* <td className="p-0">
-                  <Image
-                    src={l.image}
-                    height={50}
-                    onClick={onClickImage}
-                  ></Image>
-                </td> */}
-                    <td>
-                      {l.name} -{" "}
-                      <a
-                        target="_blank"
-                        rel="noreferrer"
-                        href={"https://www.sephora.fr" + l.url}
-                      >
-                        click
-                      </a>
-                    </td>
+                {data
+                  .slice(
+                    paginations.page * paginations.perpage,
+                    paginations.perpage * (paginations.page + 1)
+                  )
+                  .map((l, i) => (
+                    <tr key={`product-${l.id}`}>
+                      <td>{i + 1}</td>
+                      <td>{l.id}</td>
+                      <td className="p-0">
+                        <Image
+                          src={loadImages ? l.image : null}
+                          height={50}
+                          loading={"lazy"}
+                          onClick={onClickImage}
+                        ></Image>
+                      </td>
+                      <td>
+                        {l.name} -{" "}
+                        <a
+                          target="_blank"
+                          rel="noreferrer"
+                          href={"https://www.sephora.fr" + l.url}
+                        >
+                          click
+                        </a>
+                      </td>
 
-                    <td>{l.brand}</td>
-                    <td>{l.price}</td>
-                    <td className="text-nowrap">{l.updated_at}</td>
-                    <td className="text-nowrap">{l.created_at}</td>
+                      <td>{l.brand}</td>
+                      <td>{l.price}</td>
+                      <td className="text-nowrap">{l.updated_at}</td>
+                      {/* <td className="text-nowrap">{l.created_at}</td> */}
 
-                    <td>
-                      <a
-                        target="_blank"
-                        rel="noreferrer"
-                        href={"https://www.sephora.fr" + l.listUrl}
-                      >
-                        click
-                      </a>
-                    </td>
-                  </tr>
-                ))}
+                      <td>
+                        <a
+                          target="_blank"
+                          rel="noreferrer"
+                          href={"https://www.sephora.fr" + l.listUrl}
+                        >
+                          click
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </Table>
           </Row>{" "}

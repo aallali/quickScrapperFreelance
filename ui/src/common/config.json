@@ -1,0 +1,7 @@
+{
+    "productsUrl": "https://automate-web-test-scraplng.s3.amazonaws.com/products.json",
+    "categoriesUrl": "https://automate-web-test-scraping.s3.us-east-1.amazonaws.com/categories.json",
+    "elementPerPage": 100,
+    "defaultStatuFilter" : "new",
+    "minLengthToTriggerFilter" : 2
+}
