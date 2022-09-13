@@ -1,7 +1,29 @@
 {
-    "productsUrl": "https://automate-web-test-scraplng.s3.amazonaws.com/products.json",
-    "categoriesUrl": "https://automate-web-test-scraping.s3.us-east-1.amazonaws.com/categories.json",
-    "elementPerPage": 100,
+    
+    "elementPerPage": 70,
     "defaultStatuFilter" : "new",
-    "minLengthToTriggerFilter" : 2
+    "minLengthToTriggerFilter" : 2,
+
+
+    "stores": [
+        {
+            "name": "sephora.fr",
+            "prefix": "https://www.sephora.fr",
+            "products": "https://scrfiles.s3.amazonaws.com/sephora_fr/data/products.json",
+            "categories": "https://scrfiles.s3.amazonaws.com/sephora_fr/data/categories.json"
+        },
+        {
+            "name": "nocibe.fr",
+            "prefix": "https://www.nocibe.fr",
+            "products": "https://scrfiles.s3.amazonaws.com/nocibe_fr/data/products.json",
+            "categories": "https://scrfiles.s3.amazonaws.com/nocibe_fr/data/categories.json"
+        },
+        {
+            "name": "marionnaud.fr",
+            "prefix": "https://www.marionnaud.fr",
+            "products": "https://scrfiles.s3.amazonaws.com/marionnaud_fr/data/products.jso",
+            "categories": "https://scrfiles.s3.amazonaws.com/marionnaud_fr/data/categories.json"
+        }
+    ]
 }
+ 

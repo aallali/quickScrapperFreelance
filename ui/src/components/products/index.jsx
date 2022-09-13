@@ -8,15 +8,21 @@ import "./Products.css";
 import config from "../../common/config.json";
 
 export default function Products() {
-  const { data: db } = useFetch(config.productsUrl);
-  const { data: categories } = useFetch(config.categoriesUrls);
+  const [store, setStore] = useState(
+    config.stores.find((el) => el.name === "sephora.fr")
+  );
+
+  const { data: db, error } = useFetch(store?.products);
+  const { data: categories } = useFetch(store?.categories);
   const [data, updateData] = useState([]);
   const [loadImages, setImageToLoad, onClickImage] = useImages();
+
   const [paginations, updatePage, setPagination] = usePagination(
     setImageToLoad,
     data,
     config.elementPerPage
   );
+
   const [
     brands,
     liveSearch,
@@ -32,14 +38,34 @@ export default function Products() {
     updateData,
     db
   );
-
+ 
   return (
     <div className="inner-products">
       {!db.length ? (
-        <h1>Loading ...</h1>
+        <h1>{error || "Loading ..."}</h1>
       ) : (
         <>
           {" "}
+          <Row>
+            <Col className="col-2">
+              <h5> store filter : </h5>
+            </Col>
+            <Col>
+              <select
+                onChange={(e) =>
+                  setStore(
+                    config.stores.find((el) => el.name === e.target.value)
+                  )
+                }
+              >
+                {config.stores.map((l) => (
+                  <option value={l.name} key={l.name}>
+                    {l.name}
+                  </option>
+                ))}
+              </select>
+            </Col>
+          </Row>
           <Row>
             <Col className="col-2">
               <h5> statu filter : </h5>
@@ -68,14 +94,16 @@ export default function Products() {
             <Col>
               <select onChange={(e) => setCatFilter(e.target.value)}>
                 <option value="">all</option>
-                {categories.sort().map((l) => (
-                  <option
-                    key={"categorie-" + l}
-                    value={l.replace("https://www.sephora.fr", "")}
-                  >
-                    [X] - {l.replace("https://www.sephora.fr/", "")}
-                  </option>
-                ))}
+                {Array.from(new Set(categories))
+                  .sort()
+                  .map((l) => (
+                    <option
+                      key={"categorie-" + l}
+                      value={l.replace("https://www.sephora.fr", "")}
+                    >
+                      [X] - {l.replace("https://www.sephora.fr/", "")}
+                    </option>
+                  ))}
               </select>
             </Col>
           </Row>
@@ -94,7 +122,7 @@ export default function Products() {
                         db.filter(
                           (el) =>
                             el.statu === statuFilter &&
-                            el.listUrl.includes(categoryFilter) &&
+                            el.listUrl.join(" ").includes(categoryFilter) &&
                             el.brand.includes(l)
                         ).length
                       }
@@ -239,7 +267,7 @@ export default function Products() {
                         <a
                           target="_blank"
                           rel="noreferrer"
-                          href={"https://www.sephora.fr" + l.url}
+                          href={store.prefix + l.url}
                         >
                           click
                         </a>
@@ -251,19 +279,25 @@ export default function Products() {
                       {/* <td className="text-nowrap">{l.created_at}</td> */}
 
                       <td>
-                        <a
-                          target="_blank"
-                          rel="noreferrer"
-                          href={"https://www.sephora.fr" + l.listUrl}
-                        >
-                          click
-                        </a>
+                        {l.listUrl.map((url, i) => (
+                          <div key={url + "<=>" + i}>
+                            {" "}
+                            <a
+                              target="_blank"
+                              rel="noreferrer"
+                              href={store.prefix + url}
+                            >
+                              click
+                            </a>{" "}
+                            |{" "}
+                          </div>
+                        ))}
                       </td>
                     </tr>
                   ))}
               </tbody>
             </Table>
-          </Row>{" "}
+          </Row>
         </>
       )}
     </div>

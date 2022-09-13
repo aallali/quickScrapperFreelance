@@ -28,7 +28,7 @@ export function useFilters(minFilterLength, defaultStatu, updateData, db) {
       db.filter(
         (l) =>
           l.statu === statuFilter &&
-          l.listUrl.includes(categoryFilter) &&
+          l.listUrl.join(" ").includes(categoryFilter) &&
           (l.brand || "").includes(brandFilter) &&
           !Object.keys(multiFilter)
             .map((f) =>
@@ -43,7 +43,7 @@ export function useFilters(minFilterLength, defaultStatu, updateData, db) {
       db.filter(
         (l) =>
           l.statu === statuFilter &&
-          l.listUrl.includes(categoryFilter) &&
+          l.listUrl.join(" ").includes(categoryFilter) &&
           (l.brand || "").includes(brandFilter)
       )
     );
