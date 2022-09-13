@@ -19,7 +19,7 @@ class Website:
 
         self.perPageSize = 48
         self.baseUrl =  "https://www.nocibe.fr" 
-        self.website = "https://www.nocibe.fr"
+        self.website = "nocibe.fr"
     
         uas = [
             'Mozilla/5.0 (X11; Linux x86_64; rv:99.0) Gecko/20100101 Firefox/99.0', 
@@ -136,10 +136,13 @@ class Website:
     
     def getProductsList(self):
  
-        products = self.page\
-        .find(class_="prodlist__list-wrap").find_all(class_="proditem proditem__after-story")
-    
- 
+        products = self.page.find(class_="prodlist__list-wrap")
+        
+        if not products:
+            return []
+        
+        products = products.find_all(class_="proditem proditem__after-story")
+
         finalListProducts = []
         for prod in products:
            
