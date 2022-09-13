@@ -1,7 +1,5 @@
-# empty
 import random
 import math
-import json
 import re
 import os
 import traceback
