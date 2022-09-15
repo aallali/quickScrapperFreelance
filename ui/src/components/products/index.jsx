@@ -78,9 +78,6 @@ export default function Products() {
                 <option value="changed">
                   Changed ({db.filter((el) => el.statu === "changed").length})
                 </option>
-                <option value="stable">
-                  Stable ({db.filter((el) => el.statu === "stable").length})
-                </option>
                 <option value="deleted">
                   deleted ({db.filter((el) => el.statu === "deleted").length})
                 </option>
@@ -101,7 +98,7 @@ export default function Products() {
                       key={"categorie-" + l}
                       value={l.replace("https://www.sephora.fr", "")}
                     >
-                      [X] - {l.replace("https://www.sephora.fr/", "")}
+                      [&#10004;] - {l.replace("https://www.sephora.fr/", "")}
                     </option>
                   ))}
               </select>
@@ -197,9 +194,7 @@ export default function Products() {
                     />
                   </th>
                   <th>
-                    <Button onClick={() => setImageToLoad((prev) => !prev)}>
-                      {loadImages ? "hide" : "show"}
-                    </Button>
+                    
                   </th>
                   <th>
                     <input
@@ -256,7 +251,7 @@ export default function Products() {
                       <td>{l.id}</td>
                       <td className="p-0">
                         <Image
-                          src={loadImages ? l.image : null}
+                          src={loadImages ? l.image : l.image}
                           height={50}
                           loading={"lazy"}
                           onClick={onClickImage}
