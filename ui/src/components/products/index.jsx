@@ -251,7 +251,7 @@ export default function Products() {
                       <td>{l.id}</td>
                       <td className="p-0">
                         <Image
-                          src={loadImages ? l.image : l.image}
+                          src={l.image}
                           height={50}
                           loading={"lazy"}
                           onClick={onClickImage}
