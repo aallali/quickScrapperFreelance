@@ -1,24 +1,35 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
-import { Pagination, Button, Row, Col, Table, Image } from "react-bootstrap";
+import { Pagination, Row, Col, Table, Image } from "react-bootstrap";
 import { usePagination, useImages, useFilters } from "./logic";
 import useFetch from "../../utils/useFetch";
-
+import MultiSelectDropdown from "../MultiSelectDropdown";
 import "./Products.css";
 import config from "../../common/config.json";
 
+function countSuffix(count) {
+  return count ? `(${count})` : null;
+}
+
+function isCategoryIncluded(cat, cats) {
+ 
+  for (let i = 0; i < cats.length; i++) {
+      if (cat.includes(cats[i]))
+        return true
+  }
+  return false
+}
 export default function Products() {
   const [store, setStore] = useState(
     config.stores.find((el) => el.name === "sephora.fr")
   );
-
-  const { data: db, error } = useFetch(store?.products);
-  const { data: categories } = useFetch(store?.categories);
+  const [isFirstFetch, setFirstFetch] = useState(true);
+  const { data: db, error, setData: updateDB } = useFetch(store?.products);
+  const [categories, setCategories] = useState([]);
   const [data, updateData] = useState([]);
-  const [loadImages, setImageToLoad, onClickImage] = useImages();
+  const [onClickImage] = useImages();
 
-  const [paginations, updatePage, setPagination] = usePagination(
-    setImageToLoad,
+  const [paginations, setPagination] = usePagination(
     data,
     config.elementPerPage
   );
@@ -26,11 +37,11 @@ export default function Products() {
   const [
     brands,
     liveSearch,
-    runFilter,
+    
     statuFilter,
     setStatuFilter,
     setBrandFilter,
-    categoryFilter,
+    categoriesFilter,
     setCatFilter,
   ] = useFilters(
     config.minLengthToTriggerFilter,
@@ -38,10 +49,44 @@ export default function Products() {
     updateData,
     db
   );
- 
+  useEffect(() => {
+    if (isFirstFetch && db.length) {
+      let allCats = [];
+      let tmpData = [...db];
+      tmpData = tmpData.filter((l) => !["deleted", "stable"].includes(l.statu));
+
+      for (let i = 0; i < tmpData.length; i++) {
+        let el = tmpData[i];
+        allCats.push(...[].concat(el.categoryUrl));
+      }
+
+      tmpData.sort((a, b) => {
+        let fa = a.brand.toLowerCase(),
+          fb = b.brand.toLowerCase();
+
+        if (fa < fb) {
+          return -1;
+        }
+        if (fa > fb) {
+          return 1;
+        }
+        return 0;
+      });
+
+      setFirstFetch(false);
+      updateDB(tmpData);
+      setCategories(allCats);
+    }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db]);
+
+  useEffect(() => {
+    setFirstFetch(true);
+  }, [store]);
   return (
     <div className="inner-products">
-      {!db.length ? (
+      {isFirstFetch && !db.length ? (
         <h1>{error || "Loading ..."}</h1>
       ) : (
         <>
@@ -56,9 +101,8 @@ export default function Products() {
                   setStore(
                     config.stores.find((el) => el.name === e.target.value)
                   )
-				 
                 }
-				defaultValue={store.name}
+                defaultValue={store.name}
               >
                 {config.stores.map((l) => (
                   <option value={l.name} key={l.name}>
@@ -74,12 +118,8 @@ export default function Products() {
             </Col>
             <Col>
               <select onChange={(e) => setStatuFilter(e.target.value)}>
-                <option value="new">
-                  new ({db.filter((el) => el.statu === "new").length})
-                </option>
-                <option value="changed">
-                  Changed ({db.filter((el) => el.statu === "changed").length})
-                </option>
+                <option value="new">new</option>
+                <option value="changed">Changed</option>
               </select>
             </Col>
           </Row>
@@ -88,19 +128,39 @@ export default function Products() {
               <h5> categories filter : </h5>
             </Col>
             <Col>
-              <select onChange={(e) => setCatFilter(e.target.value)}>
+              <MultiSelectDropdown
+                allOptions={[...Array.from(new Set(categories)).map((l) => ({
+                  label: l
+                    .replace(store.prefix, "")
+                    .split("/")
+                    .at(-2)
+                    .split("-")
+                    .join(" ")
+                    .replace(/ [^ ]+$/, ""),
+                  value: l.replace(store.prefix, ""),
+                }))]}
+                onChangeCategories={setCatFilter}
+              />
+              {/* <select onChange={(e) => setCatFilter(e.target.value)}>
                 <option value="">all</option>
                 {Array.from(new Set(categories))
                   .sort()
                   .map((l) => (
                     <option
                       key={"categorie-" + l}
-                      value={l.replace("https://www.sephora.fr", "")}
+                      value={l.replace(store.prefix, "")}
                     >
-                      [&#10004;] - {l.replace("https://www.sephora.fr/", "")}
+                      [&#10004;] -{" "}
+                      {l
+                        .replace(store.prefix, "")
+                        .split("/")
+                        .at(-2)
+                        .split("-")
+                        .join(" ")
+                        .replace(/ [^ ]+$/, "")}
                     </option>
                   ))}
-              </select>
+              </select> */}
             </Col>
           </Row>
           <Row>
@@ -113,16 +173,16 @@ export default function Products() {
                 {brands.sort().map((l, i) => {
                   return (
                     <option key={i} value={l}>
-                      {l} (
-                      {
-                        db.filter(
+                      {l}{" "}
+                      {countSuffix(
+                        data.filter(
                           (el) =>
                             el.statu === statuFilter &&
-                            el.listUrl.join(" ").includes(categoryFilter) &&
+                            isCategoryIncluded(el.listUrl.join(" "), categoriesFilter) &&
+                             
                             el.brand.includes(l)
                         ).length
-                      }
-                      )
+                      )}
                     </option>
                   );
                 })}
@@ -139,60 +199,17 @@ export default function Products() {
             </Col>
           </Row>
           <Row>
-            <Pagination
-              size="md"
-              style={{ display: "flex", justifyContent: "center" }}
-            >
-              <Pagination.Item
-                key={"previous"}
-                active={false}
-                onClick={() =>
-                  setPagination((prev) => ({
-                    ...prev,
-                    page: prev.page - 1 > 0 ? prev.page - 1 : 0,
-                  }))
-                }
-              >
-                Previous
-              </Pagination.Item>
-              <Pagination.Item key={"page"} active={true}>
-                <input
-                  type="text"
-                  style={{ width: "40px", height: "20px", padding: "0px" }}
-                  value={paginations.page + 1}
-                  onChange={updatePage}
-                />
-                /{paginations.total}
-              </Pagination.Item>
-              <Pagination.Item
-                key={"next"}
-                active={false}
-                onClick={() =>
-                  setPagination((prev) => ({
-                    ...prev,
-                    page:
-                      prev.page + 1 < prev.total ? prev.page + 1 : prev.page,
-                  }))
-                }
-              >
-                Next
-              </Pagination.Item>
-            </Pagination>
-
             <Table striped bordered hover>
               <thead>
                 <tr>
                   <th>
-                    <Button onClick={runFilter}>Filter</Button>
-                  </th>
-				  <th>
                     <input
                       type="text"
                       placeholder="filter here..."
                       onChange={liveSearch("brand")}
                     />
                   </th>
-				  <th></th>
+                  <th></th>
                   <th>
                     <input
                       type="text"
@@ -200,7 +217,7 @@ export default function Products() {
                       onChange={liveSearch("name")}
                     />
                   </th>
-				  <th></th>
+                  <th></th>
                   <th>
                     <input
                       type="text"
@@ -208,13 +225,12 @@ export default function Products() {
                       onChange={liveSearch("updated_at")}
                     />
                   </th>
-                  
                 </tr>
                 <tr>
-				  <th>brand</th>
+                  <th>brand</th>
                   <th>image</th>
                   <th>name</th>
-                  <th>price  </th>
+                  <th>price </th>
                   <th>updated_at</th>
                 </tr>
               </thead>
@@ -226,7 +242,7 @@ export default function Products() {
                   )
                   .map((l, i) => (
                     <tr key={`product-${l.id}`}>
-					  <td>{l.brand}</td>
+                      <td>{l.brand}</td>
                       <td className="p-0">
                         <Image
                           src={l.image}
@@ -245,14 +261,52 @@ export default function Products() {
                           click
                         </a>
                       </td>
-                      <td>{l.price} €   </td>
-                      <td className="text-nowrap">{l.updated_at}</td>
-
-                      
+                      <td>{l.price} € </td>
+                      <td className="text-nowrap">
+                        {l.updated_at.split(" ")[0]}
+                      </td>
                     </tr>
                   ))}
               </tbody>
             </Table>
+
+            <Pagination
+              size="md"
+              style={{ display: "flex", justifyContent: "center" }}
+            >
+              {paginations.page > 0 ? (
+                <Pagination.Item
+                  key={"previous"}
+                  active={false}
+                  onClick={() =>
+                    setPagination((prev) => ({
+                      ...prev,
+                      page: prev.page - 1 > 0 ? prev.page - 1 : 0,
+                    }))
+                  }
+                >
+                  &lt;
+                </Pagination.Item>
+              ) : null}
+              <Pagination.Item key={"page"} active={true}>
+                Page {paginations.page + 1} sur {paginations.total}
+              </Pagination.Item>
+              {paginations.page + 1 < paginations.total ? (
+                <Pagination.Item
+                  key={"next"}
+                  active={false}
+                  onClick={() =>
+                    setPagination((prev) => ({
+                      ...prev,
+                      page:
+                        prev.page + 1 < prev.total ? prev.page + 1 : prev.page,
+                    }))
+                  }
+                >
+                  &gt;
+                </Pagination.Item>
+              ) : null}
+            </Pagination>
           </Row>
         </>
       )}

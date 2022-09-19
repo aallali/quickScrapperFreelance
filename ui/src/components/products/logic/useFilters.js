@@ -1,9 +1,17 @@
 import { useEffect, useState } from "react";
 
+function isCategoryIncluded(cat, cats) {
+ 
+  for (let i = 0; i < cats.length; i++) {
+      if (cat.includes(cats[i]))
+        return true
+  }
+  return false
+}
 export function useFilters(minFilterLength, defaultStatu, updateData, db) {
   const [statuFilter, setStatuFilter] = useState(defaultStatu);
   const [brandFilter, setBrandFilter] = useState("");
-  const [categoryFilter, setCatFilter] = useState("");
+  const [categoriesFilter, setCatFilter] = useState([""]);
   const [brands, setBrands] = useState([]);
   const [multiFilter, updateMultiFilter] = useState({
     id: "",
@@ -28,7 +36,8 @@ export function useFilters(minFilterLength, defaultStatu, updateData, db) {
       db.filter(
         (l) =>
           l.statu === statuFilter &&
-          l.listUrl.join(" ").includes(categoryFilter) &&
+          isCategoryIncluded(l.listUrl.join(" "), categoriesFilter) &&
+         
           (l.brand || "").includes(brandFilter) &&
           !Object.keys(multiFilter)
             .map((f) =>
@@ -43,7 +52,7 @@ export function useFilters(minFilterLength, defaultStatu, updateData, db) {
       db.filter(
         (l) =>
           l.statu === statuFilter &&
-          l.listUrl.join(" ").includes(categoryFilter) &&
+          isCategoryIncluded(l.listUrl.join(" "), categoriesFilter) &&
           (l.brand || "").includes(brandFilter)
       )
     );
@@ -58,15 +67,20 @@ export function useFilters(minFilterLength, defaultStatu, updateData, db) {
 
     setBrands(Array.from(brandSet));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db, statuFilter, brandFilter, categoryFilter]);
+  }, [db, statuFilter, brandFilter, categoriesFilter]);
+
+  useEffect(() => {
+    runFilter();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [multiFilter]);
   return [
     brands,
     liveSearch,
-    runFilter,
+   
     statuFilter,
     setStatuFilter,
     setBrandFilter,
-    categoryFilter,
+    categoriesFilter,
     setCatFilter,
   ];
 }
