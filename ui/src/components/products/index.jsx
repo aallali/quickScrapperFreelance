@@ -289,7 +289,7 @@ export default function Products() {
                 </Pagination.Item>
               ) : null}
               <Pagination.Item key={"page"} active={true}>
-                Page {paginations.page + 1} sur {paginations.total}
+                Page {paginations.page + 1} sur {paginations.total || 1}
               </Pagination.Item>
               {paginations.page + 1 < paginations.total ? (
                 <Pagination.Item
