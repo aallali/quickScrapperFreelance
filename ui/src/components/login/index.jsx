@@ -20,9 +20,7 @@ export default function Login({callOnLogin}) {
 
   function verifyLogin() {
     const { username, password } = loginParams;
-    log(username, password);
-    if (username === "admin" && password === "adminBeautyBench1") {
-      log("local storage et");
+    if (username === "admin" && password === "adminBeautyBench777") {
       localStorage.setItem(
         "token",
         "IAMj4Dv35Jn=?c=2i?W2vI1G5ts/IEknD1djcWNHyoPIgu7PSvrYs/1gwo.1337"

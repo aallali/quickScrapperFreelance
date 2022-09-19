@@ -56,7 +56,9 @@ export default function Products() {
                   setStore(
                     config.stores.find((el) => el.name === e.target.value)
                   )
+				 
                 }
+				defaultValue={store.name}
               >
                 {config.stores.map((l) => (
                   <option value={l.name} key={l.name}>
@@ -68,7 +70,7 @@ export default function Products() {
           </Row>
           <Row>
             <Col className="col-2">
-              <h5> statu filter : </h5>
+              <h5> state filter : </h5>
             </Col>
             <Col>
               <select onChange={(e) => setStatuFilter(e.target.value)}>
@@ -77,9 +79,6 @@ export default function Products() {
                 </option>
                 <option value="changed">
                   Changed ({db.filter((el) => el.statu === "changed").length})
-                </option>
-                <option value="deleted">
-                  deleted ({db.filter((el) => el.statu === "deleted").length})
                 </option>
               </select>
             </Col>
@@ -186,16 +185,14 @@ export default function Products() {
                   <th>
                     <Button onClick={runFilter}>Filter</Button>
                   </th>
-                  <th>
+				  <th>
                     <input
                       type="text"
-                      placeholder={"filter here..."}
-                      onChange={liveSearch("id")}
+                      placeholder="filter here..."
+                      onChange={liveSearch("brand")}
                     />
                   </th>
-                  <th>
-                    
-                  </th>
+				  <th></th>
                   <th>
                     <input
                       type="text"
@@ -203,14 +200,7 @@ export default function Products() {
                       onChange={liveSearch("name")}
                     />
                   </th>
-                  <th>
-                    <input
-                      type="text"
-                      placeholder="filter here..."
-                      onChange={liveSearch("brand")}
-                    />
-                  </th>
-                  <th></th>
+				  <th></th>
                   <th>
                     <input
                       type="text"
@@ -218,25 +208,14 @@ export default function Products() {
                       onChange={liveSearch("updated_at")}
                     />
                   </th>
-                  {/* <th>
-                    <input
-                      type="text"
-                      placeholder="filter here..."
-                      onChange={(e) => liveSearch(e.target.value, "created_at")}
-                    />
-                  </th> */}
-                  <th></th>
+                  
                 </tr>
                 <tr>
-                  <th>#</th>
-                  <th>id</th>
+				  <th>brand</th>
                   <th>image</th>
                   <th>name</th>
-                  <th>brand</th>
-                  <th>price</th>
+                  <th>price  </th>
                   <th>updated_at</th>
-                  {/* <th>created_at</th> */}
-                  <th>Source List</th>
                 </tr>
               </thead>
               <tbody>
@@ -247,8 +226,7 @@ export default function Products() {
                   )
                   .map((l, i) => (
                     <tr key={`product-${l.id}`}>
-                      <td>{i + 1}</td>
-                      <td>{l.id}</td>
+					  <td>{l.brand}</td>
                       <td className="p-0">
                         <Image
                           src={l.image}
@@ -267,27 +245,10 @@ export default function Products() {
                           click
                         </a>
                       </td>
-
-                      <td>{l.brand}</td>
-                      <td>{l.price}</td>
+                      <td>{l.price} €   </td>
                       <td className="text-nowrap">{l.updated_at}</td>
-                      {/* <td className="text-nowrap">{l.created_at}</td> */}
 
-                      <td>
-                        {l.listUrl.map((url, i) => (
-                          <div key={url + "<=>" + i}>
-                            {" "}
-                            <a
-                              target="_blank"
-                              rel="noreferrer"
-                              href={store.prefix + url}
-                            >
-                              click
-                            </a>{" "}
-                            |{" "}
-                          </div>
-                        ))}
-                      </td>
+                      
                     </tr>
                   ))}
               </tbody>
