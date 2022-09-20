@@ -1,5 +1,14 @@
 import { Table, Image } from "react-bootstrap";
 
+
+function getEvolution(oldP, newP) {
+  let arrow = {
+    up: "↗", //↗
+    down : "↘" // ↘
+  }
+  let percDiff =  (100 - oldP / newP * 100).toFixed(10)
+  return Math.abs(percDiff).toFixed(2) + (percDiff > 0 ? arrow.up : arrow.down)
+}
 function TableHeader({ liveSearch }) {
   return (
     <thead>
@@ -34,7 +43,7 @@ function TableHeader({ liveSearch }) {
         <th>brand</th>
         <th>image</th>
         <th>name</th>
-        <th>price </th>
+        <th className="col-md-1">price </th>
         <th>old price</th>
         <th>evolution</th>
         <th>updated_at</th>
@@ -62,8 +71,8 @@ function TableRow({l, onClickImage, storePrefix}) {
         </a>
       </td>
       <td>{l.price} € </td>
-      <td>1.3</td>
-      <td>10%</td>
+      <td>{l.oldPrice} </td>
+      <td>{l.oldPrice ? getEvolution(l.price, l.oldPrice)  : "-"}</td>
       <td className="text-nowrap">{l.updated_at.split(" ")[0]}</td>
     </tr>
   );
