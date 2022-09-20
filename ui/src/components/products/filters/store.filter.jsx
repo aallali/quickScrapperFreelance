@@ -13,6 +13,7 @@ export default function StoreFilter({ stores, store, setStore }) {
               setStore(stores.find((el) => el.name === e.target.value))
             }
             defaultValue={store.name}
+            className="col-md-6"
           >
             {stores.map((l) => (
               <option value={l.name} key={l.name}>

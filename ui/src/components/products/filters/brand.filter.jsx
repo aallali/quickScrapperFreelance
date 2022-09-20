@@ -17,8 +17,8 @@ export default function BrandFilter({brands, setBrandFilter, data, statuFilter, 
         <Col className="col-2">
           <h5> brand filter : </h5>
         </Col>
-        <Col>
-          <select onChange={(e) => setBrandFilter(e.target.value)}>
+        <Col  >
+          <select onChange={(e) => setBrandFilter(e.target.value)} className="col-md-6">
             <option value="">all</option>
             {brands.sort().map((l, i) => {
               return (
