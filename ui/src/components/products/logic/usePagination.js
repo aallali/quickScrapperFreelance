@@ -29,5 +29,5 @@ export function usePagination(data, perpage) {
 
  
 
-  return [paginations, updatePage, setPagination];
+  return [paginations, setPagination];
 }
