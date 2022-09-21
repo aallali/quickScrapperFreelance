@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Login.css"
-const { log } = console;
+// const { log } = console;
 export default function Login({callOnLogin}) {
   const navigate = useNavigate();
 

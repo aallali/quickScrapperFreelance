@@ -1,24 +1,31 @@
-import React, { useState } from "react";
-
-import { Pagination, Button, Row, Col, Table, Image } from "react-bootstrap";
-import { usePagination, useImages, useFilters } from "./logic";
-import useFetch from "../../utils/useFetch";
+import React, { useEffect, useState } from "react";
+import { Row, Col } from "react-bootstrap";
 
 import "./Products.css";
+
+
+import { usePagination, useImages, useFilters } from "./logic";
+import useFetch from "../../utils/useFetch";
 import config from "../../common/config.json";
+// Components
+import { ProdsTable } from "./table";
+import StoreFilter from "./filters/store.filter";
+import StatuFilter from "./filters/statu.filter";
+import CategoryFilter from "./filters/category.filter";
+import BrandFilter from "./filters/brand.filter";
+import PaginationBar from "./paginations";
 
 export default function Products() {
   const [store, setStore] = useState(
     config.stores.find((el) => el.name === "sephora.fr")
   );
-
-  const { data: db, error } = useFetch(store?.products);
-  const { data: categories } = useFetch(store?.categories);
+  const [isFirstFetch, setFirstFetch] = useState(true);
+  const { data: db, error, setData: updateDB } = useFetch(store.products);
+  const [categories, setCategories] = useState([]);
   const [data, updateData] = useState([]);
-  const [loadImages, setImageToLoad, onClickImage] = useImages();
+  const [onClickImage] = useImages();
 
-  const [paginations, updatePage, setPagination] = usePagination(
-    setImageToLoad,
+  const [paginations, setPagination] = usePagination(
     data,
     config.elementPerPage
   );
@@ -26,11 +33,11 @@ export default function Products() {
   const [
     brands,
     liveSearch,
-    runFilter,
+
     statuFilter,
     setStatuFilter,
     setBrandFilter,
-    categoryFilter,
+    categoriesFilter,
     setCatFilter,
   ] = useFilters(
     config.minLengthToTriggerFilter,
@@ -38,97 +45,66 @@ export default function Products() {
     updateData,
     db
   );
- 
+  useEffect(() => {
+    if (isFirstFetch && db.length) {
+      let allCats = [];
+      let tmpData = [...db];
+      tmpData = tmpData.filter((l) => !["deleted", "stable"].includes(l.statu));
+
+      for (let i = 0; i < tmpData.length; i++) {
+        let el = tmpData[i];
+        allCats.push(...[].concat(el.categoryUrl));
+      }
+
+      tmpData.sort((a, b) => {
+        let fa = a.brand.toLowerCase(),
+          fb = b.brand.toLowerCase();
+
+        if (fa < fb) {
+          return -1;
+        }
+        if (fa > fb) {
+          return 1;
+        }
+        return 0;
+      });
+
+      setFirstFetch(false);
+      updateDB(tmpData);
+      setCategories(allCats);
+    }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db]);
+
+  useEffect(() => {
+    setFirstFetch(true);
+  }, [store]);
   return (
     <div className="inner-products">
-      {!db.length ? (
+      {isFirstFetch && !db.length ? (
         <h1>{error || "Loading ..."}</h1>
       ) : (
         <>
           {" "}
-          <Row>
-            <Col className="col-2">
-              <h5> store filter : </h5>
-            </Col>
-            <Col>
-              <select
-                onChange={(e) =>
-                  setStore(
-                    config.stores.find((el) => el.name === e.target.value)
-                  )
-				 
-                }
-				defaultValue={store.name}
-              >
-                {config.stores.map((l) => (
-                  <option value={l.name} key={l.name}>
-                    {l.name}
-                  </option>
-                ))}
-              </select>
-            </Col>
-          </Row>
-          <Row>
-            <Col className="col-2">
-              <h5> state filter : </h5>
-            </Col>
-            <Col>
-              <select onChange={(e) => setStatuFilter(e.target.value)}>
-                <option value="new">
-                  new ({db.filter((el) => el.statu === "new").length})
-                </option>
-                <option value="changed">
-                  Changed ({db.filter((el) => el.statu === "changed").length})
-                </option>
-              </select>
-            </Col>
-          </Row>
-          <Row>
-            <Col className="col-2">
-              <h5> categories filter : </h5>
-            </Col>
-            <Col>
-              <select onChange={(e) => setCatFilter(e.target.value)}>
-                <option value="">all</option>
-                {Array.from(new Set(categories))
-                  .sort()
-                  .map((l) => (
-                    <option
-                      key={"categorie-" + l}
-                      value={l.replace("https://www.sephora.fr", "")}
-                    >
-                      [&#10004;] - {l.replace("https://www.sephora.fr/", "")}
-                    </option>
-                  ))}
-              </select>
-            </Col>
-          </Row>
-          <Row>
-            <Col className="col-2">
-              <h5> brand filter : </h5>
-            </Col>
-            <Col>
-              <select onChange={(e) => setBrandFilter(e.target.value)}>
-                <option value="">all</option>
-                {brands.sort().map((l, i) => {
-                  return (
-                    <option key={i} value={l}>
-                      {l} (
-                      {
-                        db.filter(
-                          (el) =>
-                            el.statu === statuFilter &&
-                            el.listUrl.join(" ").includes(categoryFilter) &&
-                            el.brand.includes(l)
-                        ).length
-                      }
-                      )
-                    </option>
-                  );
-                })}
-              </select>
-            </Col>
-          </Row>
+          <StoreFilter
+            stores={config.stores}
+            store={store}
+            setStore={setStore}
+          />
+          <StatuFilter setStatuFilter={setStatuFilter} />
+          <CategoryFilter
+            categories={categories}
+            store={store}
+            setCatFilter={setCatFilter}
+          />
+          <BrandFilter
+            brands={brands}
+            setBrandFilter={setBrandFilter}
+            data={data}
+            statuFilter={statuFilter}
+            categoriesFilter={categoriesFilter}
+          />
           <Row>
             <Col>
               <h5>
@@ -139,120 +115,18 @@ export default function Products() {
             </Col>
           </Row>
           <Row>
-            <Pagination
-              size="md"
-              style={{ display: "flex", justifyContent: "center" }}
-            >
-              <Pagination.Item
-                key={"previous"}
-                active={false}
-                onClick={() =>
-                  setPagination((prev) => ({
-                    ...prev,
-                    page: prev.page - 1 > 0 ? prev.page - 1 : 0,
-                  }))
-                }
-              >
-                Previous
-              </Pagination.Item>
-              <Pagination.Item key={"page"} active={true}>
-                <input
-                  type="text"
-                  style={{ width: "40px", height: "20px", padding: "0px" }}
-                  value={paginations.page + 1}
-                  onChange={updatePage}
-                />
-                /{paginations.total}
-              </Pagination.Item>
-              <Pagination.Item
-                key={"next"}
-                active={false}
-                onClick={() =>
-                  setPagination((prev) => ({
-                    ...prev,
-                    page:
-                      prev.page + 1 < prev.total ? prev.page + 1 : prev.page,
-                  }))
-                }
-              >
-                Next
-              </Pagination.Item>
-            </Pagination>
+            <ProdsTable
+              liveSearch={liveSearch}
+              data={data}
+              paginations={paginations}
+              onClickImage={onClickImage}
+              store={store}
+            />
 
-            <Table striped bordered hover>
-              <thead>
-                <tr>
-                  <th>
-                    <Button onClick={runFilter}>Filter</Button>
-                  </th>
-				  <th>
-                    <input
-                      type="text"
-                      placeholder="filter here..."
-                      onChange={liveSearch("brand")}
-                    />
-                  </th>
-				  <th></th>
-                  <th>
-                    <input
-                      type="text"
-                      placeholder="filter here..."
-                      onChange={liveSearch("name")}
-                    />
-                  </th>
-				  <th></th>
-                  <th>
-                    <input
-                      type="text"
-                      placeholder="filter here..."
-                      onChange={liveSearch("updated_at")}
-                    />
-                  </th>
-                  
-                </tr>
-                <tr>
-				  <th>brand</th>
-                  <th>image</th>
-                  <th>name</th>
-                  <th>price  </th>
-                  <th>updated_at</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data
-                  .slice(
-                    paginations.page * paginations.perpage,
-                    paginations.perpage * (paginations.page + 1)
-                  )
-                  .map((l, i) => (
-                    <tr key={`product-${l.id}`}>
-					  <td>{l.brand}</td>
-                      <td className="p-0">
-                        <Image
-                          src={l.image}
-                          height={50}
-                          loading={"lazy"}
-                          onClick={onClickImage}
-                        ></Image>
-                      </td>
-                      <td>
-                        {l.name} -{" "}
-                        <a
-                          target="_blank"
-                          rel="noreferrer"
-                          href={store.prefix + l.url}
-                        >
-                          click
-                        </a>
-                      </td>
-                      <td>{l.price} €   </td>
-                      <td className="text-nowrap">{l.updated_at}</td>
-
-                      
-                    </tr>
-                  ))}
-              </tbody>
-            </Table>
+            <PaginationBar
+              paginations={paginations}
+              setPagination={setPagination}
+            />
           </Row>
         </>
       )}

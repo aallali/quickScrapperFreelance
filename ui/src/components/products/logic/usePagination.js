@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export function usePagination(setImageToLoad, data, perpage) {
+export function usePagination(data, perpage) {
   const [paginations, setPagination] = useState({
     page: 0,
     perpage,
@@ -18,7 +18,7 @@ export function usePagination(setImageToLoad, data, perpage) {
     }
   }
   useEffect(() => {
-    setImageToLoad(false);
+   
     setPagination((prev) => ({
       page: 0,
       perpage: prev.perpage,
@@ -27,10 +27,7 @@ export function usePagination(setImageToLoad, data, perpage) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
-  useEffect(() => {
-    setImageToLoad(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paginations]);
+ 
 
-  return [paginations, updatePage, setPagination];
+  return [paginations, setPagination];
 }

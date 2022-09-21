@@ -17,7 +17,8 @@ const useFetch = (url) => {
           .get(url, { cancelToken: source.token })
           .then((res) => {
             setLoading(false);
-            res.data && setData(res.data);
+            if((res.data).length > 0) res.data && setData(res.data);
+			else setError("there is no data for this store today, please refresh the page and try again.");
           })
           .catch((err) => {
             setLoading(false);
@@ -29,7 +30,7 @@ const useFetch = (url) => {
     };
   }, [url]);
 
-  return { data, loading, error };
+  return { data, loading, error, setData };
 };
 
 export default useFetch;
