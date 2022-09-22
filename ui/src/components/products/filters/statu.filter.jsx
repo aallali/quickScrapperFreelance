@@ -9,7 +9,7 @@ export  default function StatuFilter({ setStatuFilter }) {
         </Col>
         <Col>
           <select onChange={(e) => setStatuFilter(e.target.value)} className="col-md-6">
-            <option value="new">new</option>
+            <option value="new">New</option>
             <option value="changed">Changed</option>
           </select>
         </Col>

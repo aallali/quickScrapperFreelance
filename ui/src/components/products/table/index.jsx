@@ -3,7 +3,7 @@ import { Table, Image } from "react-bootstrap";
 
 function getEvolution(oldP, newP) {
   let percDiff =  (100 - oldP / newP * 100).toFixed(10)
-  return (percDiff > 0 ? "+ " : "- ") + Math.abs(percDiff).toFixed(2) + (percDiff > 0 ? "% \u2191" : "% \u2193")
+  return (percDiff > 0 ? "- " : "+ ") + Math.abs(percDiff).toFixed(2) + (percDiff > 0 ? "% \u2193" : "% \u2191")
 }
 function TableHeader({ liveSearch }) {
   return (
@@ -32,7 +32,7 @@ function TableHeader({ liveSearch }) {
         <th>brand</th>
         <th>image</th>
         <th>name</th>
-        <th className="col-md-1">price </th>
+        <th className="col-md-1">new price </th>
         <th className="col-md-2">old price</th>
         <th className="col-md-2">evolution</th>
       </tr>
