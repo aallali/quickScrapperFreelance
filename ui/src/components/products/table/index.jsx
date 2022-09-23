@@ -27,6 +27,7 @@ function TableHeader({ liveSearch }) {
         <th></th>
         <th></th>
         <th></th>
+		<th></th>
       </tr>
       <tr>
         <th>brand</th>
@@ -35,6 +36,7 @@ function TableHeader({ liveSearch }) {
         <th className="col-md-1">new price </th>
         <th className="col-md-2">old price</th>
         <th className="col-md-2">evolution</th>
+		<th>ratings</th>
       </tr>
     </thead>
   );
@@ -61,6 +63,7 @@ function TableRow({l, onClickImage, storePrefix}) {
       <td>{l.price} € </td>
       <td>{l.oldPrice ? l.oldPrice + " €" : "change 'state' filter"}</td>
       <td>{l.oldPrice ? getEvolution(l.price, l.oldPrice) : "change 'state' filter"}</td>
+	  <td>{l.stars != 'none' ? l.stars + "/5" : "no ratings"}</td>
     </tr>
   );
 }
