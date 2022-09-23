@@ -86,7 +86,7 @@ export default function Products() {
         <h1>{error || "Loading ..."}</h1>
       ) : (
         <>
-          {" "}
+         
           <StoreFilter
             stores={config.stores}
             store={store}
@@ -108,7 +108,7 @@ export default function Products() {
           <Row>
             <Col>
               <h5>
-                {" "}
+               
                 total products with that filter {data.length} (note:{" "}
                 {paginations.perpage} elements listed per page)
               </h5>
@@ -121,6 +121,7 @@ export default function Products() {
               paginations={paginations}
               onClickImage={onClickImage}
               store={store}
+              statu={statuFilter}
             />
 
             <PaginationBar

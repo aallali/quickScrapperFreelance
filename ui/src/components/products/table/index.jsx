@@ -1,15 +1,14 @@
 import { Table, Image } from "react-bootstrap";
 
-
 function getEvolution(oldP, newP) {
   let arrow = {
     up: "↗", //↗
-    down : "↘" // ↘
-  }
-  let percDiff =  (100 - oldP / newP * 100).toFixed(10)
-  return Math.abs(percDiff).toFixed(2) + (percDiff > 0 ? arrow.up : arrow.down)
+    down: "↘", // ↘
+  };
+  let percDiff = (100 - (oldP / newP) * 100).toFixed(10);
+  return Math.abs(percDiff).toFixed(2) + (percDiff > 0 ? arrow.up : arrow.down);
 }
-function TableHeader({ liveSearch }) {
+function TableHeader({ liveSearch, statu }) {
   return (
     <thead>
       <tr>
@@ -29,8 +28,13 @@ function TableHeader({ liveSearch }) {
           />
         </th>
         <th></th>
-        <th></th>
-        <th></th>
+        {statu === "changed" ? (
+          <>
+            <th></th>
+            <th></th>
+          </>
+        ) : null}
+
         <th>
           <input
             type="text"
@@ -44,15 +48,20 @@ function TableHeader({ liveSearch }) {
         <th>image</th>
         <th>name</th>
         <th className="col-md-1">price </th>
-        <th>old price</th>
-        <th>evolution</th>
+        {statu === "changed" ? (
+          <>
+            <th>old price</th>
+            <th>evolution</th>
+          </>
+        ) : null}
+
         <th>updated_at</th>
       </tr>
     </thead>
   );
 }
 
-function TableRow({l, onClickImage, storePrefix}) {
+function TableRow({ l, onClickImage, storePrefix, statu }) {
   return (
     <tr>
       <td>{l.brand}</td>
@@ -71,8 +80,14 @@ function TableRow({l, onClickImage, storePrefix}) {
         </a>
       </td>
       <td>{l.price} € </td>
-      <td>{l.oldPrice} </td>
-      <td>{l.oldPrice ? getEvolution(l.price, l.oldPrice)  : "-"}</td>
+      {statu === "changed" ? (
+        <>
+          {" "}
+          <td>{l.oldPrice} </td>
+          <td>{l.oldPrice ? getEvolution(l.price, l.oldPrice) : "-"}</td>
+        </>
+      ) : null}
+
       <td className="text-nowrap">{l.updated_at.split(" ")[0]}</td>
     </tr>
   );
@@ -83,10 +98,11 @@ export function ProdsTable({
   paginations,
   onClickImage,
   store,
+  statu,
 }) {
   return (
     <Table striped bordered hover>
-      <TableHeader liveSearch={liveSearch} />
+      <TableHeader liveSearch={liveSearch} statu={statu} />
       <tbody>
         {data
           .slice(
@@ -94,7 +110,13 @@ export function ProdsTable({
             paginations.perpage * (paginations.page + 1)
           )
           .map((l, i) => (
-           <TableRow key={`product-${l.id}`} l={l} onClickImage={onClickImage} storePrefix={store.prefix}/>
+            <TableRow
+              key={`product-${l.id}`}
+              l={l}
+              onClickImage={onClickImage}
+              storePrefix={store.prefix}
+              statu={statu}
+            />
           ))}
       </tbody>
     </Table>
